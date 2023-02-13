@@ -29,7 +29,7 @@ class FiniteDifferences(object):
             policy_novelty = 0
 
         if len(rewards) == 0:
-            return 0
+            return 0, 0
 
         # print("{:7.4f} | {:7.4f} | {:7.4f} | {:7.4f}".format(
         #     np.mean(novelties), np.std(novelties), np.min(novelties), np.max(novelties)))
