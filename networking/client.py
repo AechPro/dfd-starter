@@ -69,13 +69,20 @@ class RPCClient(object):
 
     def get_server_state(self):
         try:
-            state = self.comm_pipe.GetServerState(self.null)
+            query_state = self.comm_pipe.QueryServerState(self.null)
+            if self.current_state is None or\
+                    query_state.epoch != self.current_state.epoch or \
+                    query_state.experiment_id != self.current_state.experiment_id:
+
+                state = self.comm_pipe.GetServerState(self.null)
+            else:
+                state = self.current_state
         except:
             print("FAILED TO RECEIVE STATE FROM SERVER")
             print(traceback.format_exc())
             return self.RPC_FAILED_FLAG
 
-        if self.current_state is None or state.experiment_id != self.current_state.experiment_id:
+        if (self.current_state is None and state is not None) or state.experiment_id != self.current_state.experiment_id:
             self._update_cfg()
             self._update_state(state)
             print("NEW EXPERIMENT ID RECEIVED!")

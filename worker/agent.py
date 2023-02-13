@@ -7,13 +7,15 @@ class Agent(object):
                  normalize_obs=False,
                  obs_stats_update_chance=0.01,
                  episode_timestep_limit=-1,
-                 observation_clip_range=10):
+                 observation_clip_range=10,
+                 deterministic_evals=False):
 
         self.policy = policy
         self.env = env
         self.rng = np.random.RandomState(random_seed)
         self.last_obs = env.reset()
         self.cumulative_timesteps = 0
+        self.deterministic_evals = deterministic_evals
 
         if episode_timestep_limit == -1:
             self.ts_limit = np.inf
@@ -32,6 +34,7 @@ class Agent(object):
         env = self.env
         obs = self.last_obs
         obs_clip = self.obs_clip
+        deterministic = self.deterministic_evals and eval_run
 
         # Agents produce updates for obs statistics. Learners accumulate these updates in a fixed obs stats object such
         # that every worker connected to a learner should be guaranteed to use the same observation statistics.
@@ -51,7 +54,7 @@ class Agent(object):
                 obs = np.subtract(obs, mean) / std
                 obs = np.clip(obs, -obs_clip, obs_clip)
 
-            action = policy.get_action(obs, deterministic=eval_run)
+            action = policy.get_action(obs, deterministic=deterministic)
             new_obs, rew, done, _ = env.step(action)
 
             reward += rew

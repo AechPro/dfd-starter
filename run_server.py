@@ -30,10 +30,12 @@ class ServerRunner(object):
                  random_seed=123,
                  max_delayed_return=10,
                  vbn_buffer_size=0,
-                 collect_zeta=True,
-                 zeta_size=100,
+                 collect_zeta=False,
+                 zeta_size=0,
                  max_strategy_history_size=0,
                  eval_prob=0.05,
+                 deterministic_evals=False,
+                 policy_rew_ema_alpha=0.99,
                  episode_timestep_limit=-1,
                  observation_clip_range=10,
                  omega_default_value=0,
@@ -88,6 +90,7 @@ class ServerRunner(object):
                                          ent_coef=ent_coef,
                                          max_delayed_return=max_delayed_return)
 
+        self.policy_rew_ema_alpha = policy_rew_ema_alpha
         self.normalize_obs = normalize_obs
         self.policy_reward = None
         self.policy_entropy = None
@@ -108,6 +111,7 @@ class ServerRunner(object):
                                   "obs_stats_update_chance": obs_stats_update_chance, "random_seed": random_seed,
                                   "eval_prob": eval_prob, "max_strategy_history_size": max_strategy_history_size,
                                   "observation_clip_range":observation_clip_range,
+                                  "deterministic_evals":deterministic_evals,
                                   "episode_timestep_limit": episode_timestep_limit,
                                   "collect_zeta": collect_zeta and self.zeta_size > 0}
 
@@ -129,6 +133,9 @@ class ServerRunner(object):
         max_delayed_return = self.learner.max_delayed_return
         strategy_handler.add_policy(policy)
         worker.update(current_state)
+
+        policy_rew_ema_alpha = self.policy_rew_ema_alpha
+        one_minus_alpha = 1 - policy_rew_ema_alpha
 
         worker.start(address="localhost", port=1025)
         t1 = time.perf_counter()
@@ -155,9 +162,9 @@ class ServerRunner(object):
                         self.policy_entropy = ret.entropy
                         self.policy_novelty = ret.novelty
                     else:
-                        self.policy_reward = self.policy_reward * 0.9 + ret.reward * 0.1
-                        self.policy_entropy = self.policy_entropy * 0.9 + ret.entropy * 0.1
-                        self.policy_novelty = self.policy_novelty * 0.9 + ret.novelty * 0.1
+                        self.policy_reward = self.policy_reward * policy_rew_ema_alpha + ret.reward * one_minus_alpha
+                        self.policy_entropy = self.policy_entropy * policy_rew_ema_alpha + ret.entropy * one_minus_alpha
+                        self.policy_novelty = self.policy_novelty * policy_rew_ema_alpha + ret.novelty * one_minus_alpha
                     self.rng.shuffle(idxs)
                     if self.zeta_size > 0 and len(ret.eval_states) > 0:
                         zeta[idxs[:len(ret.eval_states)]] = ret.eval_states[:self.zeta_size]
@@ -172,15 +179,14 @@ class ServerRunner(object):
                 # if len(ret_rewards) != 0:
                 #     self.omega.step(np.mean(ret_rewards))
 
-            update_magnitude = learner.step(non_eval_returns, self.policy_reward, self.policy_novelty, self.policy_entropy)
+            update_magnitude, delayed_proportion = learner.step(non_eval_returns, self.policy_reward,
+                                                                self.policy_novelty, self.policy_entropy)
 
             if self.vbn_buffer is not None:
                 self.policy.compute_vbn(self.vbn_buffer)
 
             if update_magnitude > 0 and len(ret_rewards) != 0:
                 strategy_handler.add_policy(policy)
-                delayed_ratio = n_delayed / len(non_eval_returns)
-
                 epoch_time = time.perf_counter() - t1
                 t1 = time.perf_counter()
 
@@ -192,7 +198,7 @@ class ServerRunner(object):
                                 "Policy Novelty":       self.policy_novelty,
                                 "\nNoisy Reward":       np.mean(ret_rewards),
                                 "Noisy Novelty":        np.mean(ret_novelties),
-                                "\nDelayed Ratio":      delayed_ratio,
+                                "\nDelayed Proportion": delayed_proportion,
                                 "Update Magnitude":     update_magnitude,
                                 "Omega":                self.omega.omega,
                                 "Discarded Returns":    learner.discarded_returns}

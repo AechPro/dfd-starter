@@ -48,7 +48,7 @@ class ClientRunner(object):
         while running:
             returns = []
             t1 = time.time()
-            while time.time() - t1 < 0.01:
+            while time.time() - t1 < 1:
                 returns += worker.collect_returns()
 
             # print("Submitted {} returns.".format(len(returns)))
@@ -86,7 +86,8 @@ class ClientRunner(object):
                 cfg = client.current_state.cfg
                 self.configure(cfg["env_id"], cfg["normalize_obs"], cfg["obs_stats_update_chance"], cfg["noise_std"],
                                cfg["random_seed"], cfg["eval_prob"], cfg["max_strategy_history_size"],
-                               cfg["observation_clip_range"], cfg["episode_timestep_limit"], cfg["collect_zeta"])
+                               cfg["observation_clip_range"], cfg["episode_timestep_limit"], cfg["collect_zeta"],
+                               cfg["deterministic_evals"])
 
                 strategy_handler = self.strategy_handler
                 policy = self.policy
@@ -113,7 +114,7 @@ class ClientRunner(object):
 
     def configure(self, env_id="Walker2d-v2", normalize_obs=True, obs_stats_update_chance=0.01,
                   noise_std=0.02, random_seed=124, eval_prob=0.05, max_strategy_history_size=200,
-                  observation_clip_range=10, episode_timestep_limit=-1, collect_zeta=False):
+                  observation_clip_range=10, episode_timestep_limit=-1, collect_zeta=False, deterministic_evals=False):
 
         print("Env: {}\nSeed: {}\nNoise std: {}\nNormalize obs: {}".format(env_id, random_seed, noise_std, normalize_obs))
         self.worker_id = "{}".format(random_seed)
@@ -135,7 +136,8 @@ class ClientRunner(object):
                       normalize_obs=normalize_obs,
                       obs_stats_update_chance=obs_stats_update_chance,
                       observation_clip_range=observation_clip_range,
-                      episode_timestep_limit=episode_timestep_limit)
+                      episode_timestep_limit=episode_timestep_limit,
+                      deterministic_evals=deterministic_evals)
 
         self.worker = Worker(self.policy, agent, noise_source, self.strategy_handler, self.worker_id,
                              sigma=noise_std, random_seed=random_seed, collect_zeta=collect_zeta,

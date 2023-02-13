@@ -8,6 +8,7 @@ service CSInterface
   rpc GetServerState(Null) returns (ServerState){}
   rpc SubmitReturn(Return) returns (Null){}
   rpc SubmitReturns(ReturnArray) returns (Null){}
+  rpc QueryServerState(Null) returns (ServerStateQueryResponse){}
 }
 
 message Config
@@ -45,6 +46,12 @@ message Return
 message ReturnArray
 {
   repeated Return rets = 1;
+}
+
+message ServerStateQueryResponse
+{
+  int64 epoch = 1;
+  string experiment_id = 2;
 }
 
 message Null{}

@@ -22,11 +22,12 @@ class FiniteDifferences(object):
         self.using_dsgd = type(gradient_optimizer) == DSGD
 
     def step(self, batch, policy_reward, policy_novelty, policy_entropy):
-        rewards, novelties, entropies, perturbations = self._process_returns(batch)
+        rewards, novelties, entropies, perturbations, n_delayed = self._process_returns(batch)
         if policy_reward is None:
             policy_reward = 0
             policy_entropy = 0
             policy_novelty = 0
+
         if len(rewards) == 0:
             return 0
 
@@ -38,14 +39,17 @@ class FiniteDifferences(object):
         #     np.mean(entropies), np.std(entropies), np.min(entropies), np.max(entropies)))
 
         rewards = np.subtract(rewards, policy_reward)
-        # novelties = np.subtract(novelties, policy_novelty)
-        # entropies = np.subtract(entropies, policy_entropy)
+        novelties = np.subtract(novelties, policy_novelty)
+        entropies = np.subtract(entropies, policy_entropy)
         rewards = math_helpers.standardize_arr(rewards)
-        # novelties = math_helpers.standardize_arr(novelties)
-        # entropies = math_helpers.standardize_arr(entropies)
-        w = self.omega.omega
+        novelties = math_helpers.standardize_arr(novelties)
+        entropies = math_helpers.standardize_arr(entropies)
+        if novelties.sum() != 0:
+            w = self.omega.omega
+        else:
+            w = 0
 
-        objective_function = rewards #+ entropies*self.ent_coef  # *(1-w) + novelties*w + entropies * self.ent_coef
+        objective_function = rewards*(1-w) + novelties*w + entropies * self.ent_coef
         np.dot(objective_function, perturbations, out=self.gradient_memory) / len(batch)
 
         if self.using_dsgd:
@@ -61,7 +65,7 @@ class FiniteDifferences(object):
 
         self._build_distance_map()
         self._update_policy_history()
-        return update_size
+        return update_size, n_delayed/len(batch)
 
     def _build_distance_map(self):
         flat = self.policy.get_trainable_flat()
@@ -97,13 +101,14 @@ class FiniteDifferences(object):
         entropies = []
         perturbations = []
 
+        n_delayed = 0
         for ret in batch:
             if not self._adjust_return(ret):
                 self.discarded_returns += 1
                 continue
-
+            if ret.epoch != self.epoch:
+                n_delayed += 1
             perturbation = ret.perturbation
-            # perturbation = ret.encoded_noise
             norm = np.linalg.norm(perturbation)
 
             rewards.append(ret.reward)
@@ -111,4 +116,4 @@ class FiniteDifferences(object):
             entropies.append(ret.entropy)
             perturbations.append(perturbation / (norm * norm))
 
-        return rewards, novelties, entropies, perturbations
+        return rewards, novelties, entropies, perturbations, n_delayed

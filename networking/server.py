@@ -125,8 +125,12 @@ class ServerServicer(client_server_interface_pb2_grpc.CSInterfaceServicer):
         self.null = client_server_interface_pb2.Null()
         self.server_interface = server_interface
 
-    def GetServerState(self, request, context):
+    def QueryServerState(self, request, context):
+        response = client_server_interface_pb2.ServerStateQueryResponse(epoch=self.server_interface.server_state.epoch,
+                                                         experiment_id=self.server_interface.server_state.experiment_id)
+        return response
 
+    def GetServerState(self, request, context):
         server_interface = self.server_interface
         response = client_server_interface_pb2.ServerState(
             strategy_frames=server_interface.server_state.strategy_frames,

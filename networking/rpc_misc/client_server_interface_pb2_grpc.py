@@ -33,6 +33,11 @@ class CSInterfaceStub(object):
                 request_serializer=client__server__interface__pb2.ReturnArray.SerializeToString,
                 response_deserializer=client__server__interface__pb2.Null.FromString,
                 )
+        self.QueryServerState = channel.unary_unary(
+                '/CSInterface/QueryServerState',
+                request_serializer=client__server__interface__pb2.Null.SerializeToString,
+                response_deserializer=client__server__interface__pb2.ServerStateQueryResponse.FromString,
+                )
 
 
 class CSInterfaceServicer(object):
@@ -62,6 +67,12 @@ class CSInterfaceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def QueryServerState(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CSInterfaceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -84,6 +95,11 @@ def add_CSInterfaceServicer_to_server(servicer, server):
                     servicer.SubmitReturns,
                     request_deserializer=client__server__interface__pb2.ReturnArray.FromString,
                     response_serializer=client__server__interface__pb2.Null.SerializeToString,
+            ),
+            'QueryServerState': grpc.unary_unary_rpc_method_handler(
+                    servicer.QueryServerState,
+                    request_deserializer=client__server__interface__pb2.Null.FromString,
+                    response_serializer=client__server__interface__pb2.ServerStateQueryResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -160,5 +176,22 @@ class CSInterface(object):
         return grpc.experimental.unary_unary(request, target, '/CSInterface/SubmitReturns',
             client__server__interface__pb2.ReturnArray.SerializeToString,
             client__server__interface__pb2.Null.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def QueryServerState(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/CSInterface/QueryServerState',
+            client__server__interface__pb2.Null.SerializeToString,
+            client__server__interface__pb2.ServerStateQueryResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
